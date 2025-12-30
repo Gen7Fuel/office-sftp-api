@@ -85,5 +85,40 @@ router.get('/receive/:shift', async (req, res) => {
     res.status(500).json({ error: 'Failed to read file' })
   }
 })
+ 
+// GET /api/sftp/check/:shift?site=SITE
+router.get('/check/:shift', async (req, res) => {
+  const { site } = req.query
+  const { shift } = req.params
+  const extNoDot = 'sft'
+  const ext = '.sft'
+
+  if (!/^\d+$/.test(shift)) return res.status(400).json({ error: 'Invalid shift' })
+  if (!getSftpConfig(site)) {
+    return res.status(400).json({ error: `No SFTP credentials configured for site: ${site || '(missing)'}` })
+  }
+
+  try {
+    const valid = await withSftp(site, async (sftp) => {
+      const remoteDir = '/receive'
+      const list = await sftp.list(remoteDir)
+      const target = list.find(
+        (f) =>
+          typeof f.name === 'string' &&
+          f.name.toLowerCase().endsWith(ext) &&
+          new RegExp(`\\b${shift}\\.${extNoDot}$`, 'i').test(f.name)
+      )
+      return Boolean(target)
+    })
+    res.json({ valid })
+  } catch (err) {
+    const msg = err?.message || String(err)
+    const code = err?.code
+    console.error('SFTP check error:', code, msg)
+    if (code === 'ECONNREFUSED') return res.status(502).json({ error: 'SFTP connection refused' })
+    if (code === 'ETIMEDOUT') return res.status(504).json({ error: 'SFTP connection timed out' })
+    res.status(500).json({ error: 'Failed to check file' })
+  }
+})
 
 module.exports = router

@@ -1,16 +1,35 @@
 // filepath: office-sftp-api/src/config/sftpConfig.js
 require('dotenv').config()
+const fs = require('fs')
+const os = require('os')
+const path = require('path')
+const { getIndNumber } = require('../utils/locations')
 
-const normalizeSiteKey = (s) => String(s || '').trim().toUpperCase().replace(/\s+/g, '_')
+const SFTP_KEY_USERNAME = 'gen7report'
+const SFTP_KEY_PATH = path.join(os.homedir(), '.ssh', 'id_ed25519_sentex')
 
-function getSftpConfig(site) {
-  const key = normalizeSiteKey(site)
+let cachedPrivateKey
+
+function loadPrivateKey() {
+  if (!cachedPrivateKey) {
+    cachedPrivateKey = fs.readFileSync(SFTP_KEY_PATH)
+  }
+  return cachedPrivateKey
+}
+
+async function getSftpConfig(site) {
   const host = process.env.SFTP_HOST
   const port = Number(process.env.SFTP_PORT || 22)
-  const username = process.env[`SFTP_${key}_USER`] || process.env[`SFTP_${key}_USERNAME`]
-  const password = process.env[`SFTP_${key}_PASS`] || process.env[`SFTP_${key}_PASSWORD`]
-  if (!host || !port || !username || !password) return null
-  return { host, port, username, password }
+  if (!host || !port) {
+    const err = new Error('Missing SFTP_HOST/SFTP_PORT configuration')
+    err.code = 'CONFIG'
+    throw err
+  }
+
+  const indNumber = await getIndNumber(site)
+  const privateKey = loadPrivateKey()
+
+  return { host, port, username: SFTP_KEY_USERNAME, privateKey, indNumber }
 }
 
 module.exports = { getSftpConfig }

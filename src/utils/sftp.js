@@ -3,12 +3,7 @@ const SftpClient = require('ssh2-sftp-client')
 const { getSftpConfig } = require('../config/sftpConfig')
 
 async function withSftp(site, fn, attempts = 2) {
-  const cfg = getSftpConfig(site)
-  if (!cfg) {
-    const err = new Error(`Missing SFTP config for site: ${site || '(missing)'}`)
-    err.code = 'CONFIG'
-    throw err
-  }
+  const { indNumber, ...connectCfg } = await getSftpConfig(site)
 
   const legacy =
     process.env.SFTP_LEGACY === '1'
@@ -26,8 +21,8 @@ async function withSftp(site, fn, attempts = 2) {
   for (let i = 0; i < attempts; i++) {
     const sftp = new SftpClient()
     try {
-      await sftp.connect({ ...cfg, readyTimeout: 15000, ...legacy })
-      const out = await fn(sftp)
+      await sftp.connect({ ...connectCfg, readyTimeout: 15000, ...legacy })
+      const out = await fn(sftp, { indNumber })
       await sftp.end().catch(() => {})
       return out
     } catch (err) {

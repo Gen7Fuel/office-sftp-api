@@ -25,7 +25,7 @@ router.get('/receive', async (req, res) => {
 
   try {
     const files = await withSftp(site, async (sftp, { indNumber }) => {
-      const remoteDir = `/${indNumber}`
+      const remoteDir = `/backoffice/${indNumber}`
       const list = await sftp.list(remoteDir)
       return list
         .filter((f) => typeof f.name === 'string' && f.name.toLowerCase().endsWith(ext))
@@ -57,7 +57,7 @@ router.get('/receive/:shift', async (req, res) => {
 
   try {
     const result = await withSftp(site, async (sftp, { indNumber }) => {
-      const remoteDir = `/${indNumber}`
+      const remoteDir = `/backoffice/${indNumber}`
       const list = await sftp.list(remoteDir)
       const target = list.find(
         (f) =>
@@ -90,7 +90,7 @@ router.get('/check/:shift', async (req, res) => {
 
   try {
     const valid = await withSftp(site, async (sftp, { indNumber }) => {
-      const remoteDir = `/${indNumber}`
+      const remoteDir = `/backoffice/${indNumber}`
       const list = await sftp.list(remoteDir)
       const target = list.find(
         (f) =>
